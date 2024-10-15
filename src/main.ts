@@ -43,4 +43,11 @@ canvas.addEventListener('mousemove', ev => {
         canvasContext.closePath();
         canvasContext.stroke();
     }
-})
+});
+
+makeElement('button', elem => {
+    elem.innerHTML = "Clear";
+    elem.onclick = _ => {
+        canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+    }
+});
