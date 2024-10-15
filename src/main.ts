@@ -46,8 +46,14 @@ function drawingRedo(): boolean {
 }
 
 function drawingClear(): void {
+    redoStack.length = 0;
     displayList.length = 0;
     canvas.dispatchEvent(new Event('drawing-changed'));
+}
+
+function drawingBeginUndoStep(): void {
+    redoStack.length = 0;
+    undoStack.push([]);
 }
 
 makeElement(app, 'button', {innerHTML: "Undo", onclick: drawingUndo});
@@ -72,7 +78,7 @@ function drawLine(from: Point, to: Point): void {
 
 canvas.addEventListener('mousedown', ev => {
     if (ev.button == LEFT_CLICK) {
-        displayList.push([]);
+        drawingBeginUndoStep();
     }
 });
 
