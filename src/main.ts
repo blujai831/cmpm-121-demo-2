@@ -15,3 +15,7 @@ function makeElement<Tag extends keyof HTMLElementTagNameMap>(
 }
 
 makeElement('h1', elem => elem.innerHTML = APP_NAME);
+makeElement('canvas', elem => {
+    elem.width = 256;
+    elem.height = 256;
+});
