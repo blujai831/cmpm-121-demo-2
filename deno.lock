@@ -1,7 +1,7 @@
 {
   "version": "4",
   "specifiers": {
-    "npm:vite@*": "5.4.8"
+    "npm:vite@*": "5.4.9"
   },
   "npm": {
     "@esbuild/aix-ppc64@0.21.5": {
@@ -195,8 +195,8 @@
     "source-map-js@1.2.1": {
       "integrity": "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA=="
     },
-    "vite@5.4.8": {
-      "integrity": "sha512-FqrItQ4DT1NC4zCUqMB4c4AZORMKIa0m8/URVCZ77OZ/QSNeJ54bU1vrFADbDsuwfIPcgknRkmqakQcgnL4GiQ==",
+    "vite@5.4.9": {
+      "integrity": "sha512-20OVpJHh0PAM0oSOELa5GaZNWeDjcAvQjGXy2Uyr+Tp+/D2/Hdz6NLgpJLsarPTA2QJ6v8mX2P1ZfbsSKvdMkg==",
       "dependencies": [
         "esbuild",
         "fsevents",
