@@ -1,10 +1,13 @@
 import "./style.css";
 
 const APP_NAME = "Sticker Sketchpad";
-const LEFT_CLICK = 1; // Why no standard library enum?
+const LEFT_CLICK = 0;
+const LEFT_CLICK_FLAG = 1;
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
 interface Point {x: number, y: number}
+
+let displayList: Point[][] = [];
 
 document.title = APP_NAME;
 
@@ -34,23 +37,31 @@ canvasContext.strokeStyle = 'black';
 
 function drawLine(from: Point, to: Point): void {
     canvasContext.beginPath();
-    canvasContext.moveTo(from.x, to.x);
-    canvasContext.lineTo(from.y, to.y);
+    canvasContext.moveTo(from.x, from.y);
+    canvasContext.lineTo(to.x, to.y);
     canvasContext.closePath();
     canvasContext.stroke();
 }
+
+canvas.addEventListener('mousedown', ev => {
+    if (ev.button == LEFT_CLICK) {
+        displayList.push([]);
+    }
+});
 
 canvas.addEventListener('mousemove', ev => {
     const posn: Point = {
         x: ev.clientX - canvas.offsetLeft,
         y: ev.clientY - canvas.offsetTop
     };
-    const lastPosn: Point = {
-        x: posn.x - ev.movementX,
-        y: posn.y - ev.movementY
-    };
-    if ((ev.buttons & LEFT_CLICK) == LEFT_CLICK) {
-        drawLine(lastPosn, posn);
+    if ((ev.buttons & LEFT_CLICK_FLAG) == LEFT_CLICK_FLAG) {
+        if (displayList.length > 0) {
+            const pointList = displayList[displayList.length - 1];
+            pointList.push(posn);
+            if (pointList.length > 1) {
+                drawLine(pointList[pointList.length - 2], posn);
+            }
+        }
     }
 });
 
