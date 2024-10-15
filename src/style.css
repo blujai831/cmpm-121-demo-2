@@ -81,10 +81,12 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-canvas {
+canvas#user-drawing-area {
   border: 2px solid black;
   border-radius: 5%;
   box-shadow: black 8px 8px;
+  display: block;
+  margin: 0 auto;
 }
 
 @media (prefers-color-scheme: light) {
