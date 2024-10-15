@@ -27,11 +27,20 @@ const canvas = makeElement('canvas', elem => {
     elem.height = 256;
 });
 makeElement('button', elem => {
+    elem.innerHTML = "Undo";
+    elem.onclick = _ => {
+        if (displayList.length > 0) {
+            displayList.pop();
+            canvas.dispatchEvent(new Event('drawing-changed'));
+        }
+    };
+});
+makeElement('button', elem => {
     elem.innerHTML = "Clear";
     elem.onclick = _ => {
         displayList.length = 0;
         canvas.dispatchEvent(new Event('drawing-changed'));
-    }
+    };
 });
 
 const canvasContext: CanvasRenderingContext2D = (() => {
