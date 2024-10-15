@@ -28,30 +28,39 @@ const canvas = makeElement('canvas', elem => {
     elem.width = 256;
     elem.height = 256;
 });
+
+function drawingUndo(): boolean {
+    if (undoStack.length > 0) {
+        redoStack.push(undoStack.pop()!);
+        canvas.dispatchEvent(new Event('drawing-changed'));
+        return true;
+    } else return false;
+}
+
+function drawingRedo(): boolean {
+    if (redoStack.length > 0) {
+        undoStack.push(redoStack.pop()!)
+        canvas.dispatchEvent(new Event('drawing-changed'));
+        return true;
+    } else return false;
+}
+
+function drawingClear(): void {
+    displayList.length = 0;
+    canvas.dispatchEvent(new Event('drawing-changed'));
+}
+
 makeElement('button', elem => {
     elem.innerHTML = "Undo";
-    elem.onclick = _ => {
-        if (undoStack.length > 0) {
-            redoStack.push(undoStack.pop()!);
-            canvas.dispatchEvent(new Event('drawing-changed'));
-        }
-    };
+    elem.onclick = drawingUndo;
 });
 makeElement('button', elem => {
     elem.innerHTML = "Redo";
-    elem.onclick = _ => {
-        if (redoStack.length > 0) {
-            undoStack.push(redoStack.pop()!)
-            canvas.dispatchEvent(new Event('drawing-changed'));
-        }
-    };
+    elem.onclick = drawingRedo;
 });
 makeElement('button', elem => {
     elem.innerHTML = "Clear";
-    elem.onclick = _ => {
-        displayList.length = 0;
-        canvas.dispatchEvent(new Event('drawing-changed'));
-    };
+    elem.onclick = drawingClear;
 });
 
 const canvasContext: CanvasRenderingContext2D = (() => {
