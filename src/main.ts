@@ -26,6 +26,13 @@ const canvas = makeElement('canvas', elem => {
     elem.width = 256;
     elem.height = 256;
 });
+makeElement('button', elem => {
+    elem.innerHTML = "Clear";
+    elem.onclick = _ => {
+        displayList.length = 0;
+        canvas.dispatchEvent(new Event('drawing-changed'));
+    }
+});
 
 const canvasContext: CanvasRenderingContext2D = (() => {
     const result = canvas.getContext('2d');
@@ -58,16 +65,20 @@ canvas.addEventListener('mousemove', ev => {
         if (displayList.length > 0) {
             const pointList = displayList[displayList.length - 1];
             pointList.push(posn);
-            if (pointList.length > 1) {
-                drawLine(pointList[pointList.length - 2], posn);
-            }
+            canvas.dispatchEvent(new Event('drawing-changed'));
         }
     }
 });
 
-makeElement('button', elem => {
-    elem.innerHTML = "Clear";
-    elem.onclick = _ => {
-        canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+canvas.addEventListener('drawing-changed', _ => {
+    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+    for (const pointList of displayList) {
+        let lastPosn: Point | null = null;
+        for (const posn of pointList) {
+            if (lastPosn !== null) {
+                drawLine(lastPosn, posn);
+            }
+            lastPosn = posn;
+        }
     }
 });
