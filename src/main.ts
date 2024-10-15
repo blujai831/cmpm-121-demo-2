@@ -30,19 +30,24 @@ const canvasContext: CanvasRenderingContext2D = (() => {
 canvasContext.lineWidth = 4;
 canvasContext.strokeStyle = 'black';
 
+function drawLine(
+    fromX: number, fromY: number, toX: number, toY: number
+): void {
+    canvasContext.beginPath();
+    canvasContext.moveTo(fromX, fromY);
+    canvasContext.lineTo(toX, toY);
+    canvasContext.closePath();
+    canvasContext.stroke();
+}
+
 canvas.addEventListener('mousemove', ev => {
     if ((ev.buttons & LEFT_CLICK) == LEFT_CLICK) {
-        canvasContext.beginPath();
-        canvasContext.moveTo(
+        drawLine(
             ev.clientX - ev.movementX - canvas.offsetLeft,
-            ev.clientY - ev.movementY - canvas.offsetTop
-        );
-        canvasContext.lineTo(
+            ev.clientY - ev.movementY - canvas.offsetTop,
             ev.clientX - canvas.offsetLeft,
             ev.clientY - canvas.offsetTop
         );
-        canvasContext.closePath();
-        canvasContext.stroke();
     }
 });
 
