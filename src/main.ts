@@ -29,6 +29,14 @@ const canvas = makeElement(app, 'canvas', {
     id: 'user-drawing-area', width: 256, height: 256
 });
 
+const canvasContext: CanvasRenderingContext2D = (() => {
+    const result = canvas.getContext('2d');
+    if (result === null) throw Error("No 2D rendering support");
+    else return result;
+})();
+canvasContext.lineWidth = 4;
+canvasContext.strokeStyle = 'black';
+
 function drawingUndo(): boolean {
     if (undoStack.length > 0) {
         redoStack.push(undoStack.pop()!);
@@ -56,18 +64,6 @@ function drawingBeginUndoStep(): void {
     undoStack.push([]);
 }
 
-makeElement(app, 'button', {innerHTML: "Undo", onclick: drawingUndo});
-makeElement(app, 'button', {innerHTML: "Redo", onclick: drawingRedo});
-makeElement(app, 'button', {innerHTML: "Clear", onclick: drawingClear});
-
-const canvasContext: CanvasRenderingContext2D = (() => {
-    const result = canvas.getContext('2d');
-    if (result === null) throw Error("No 2D rendering support");
-    else return result;
-})();
-canvasContext.lineWidth = 4;
-canvasContext.strokeStyle = 'black';
-
 function drawLine(from: Point, to: Point): void {
     canvasContext.beginPath();
     canvasContext.moveTo(from.x, from.y);
@@ -75,6 +71,10 @@ function drawLine(from: Point, to: Point): void {
     canvasContext.closePath();
     canvasContext.stroke();
 }
+
+makeElement(app, 'button', {innerHTML: "Undo", onclick: drawingUndo});
+makeElement(app, 'button', {innerHTML: "Redo", onclick: drawingRedo});
+makeElement(app, 'button', {innerHTML: "Clear", onclick: drawingClear});
 
 canvas.addEventListener('mousedown', ev => {
     if (ev.button == LEFT_CLICK) {
