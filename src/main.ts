@@ -41,13 +41,12 @@ function drawLine(
 }
 
 canvas.addEventListener('mousemove', ev => {
+    const x = ev.clientX - canvas.offsetLeft;
+    const y = ev.clientY - canvas.offsetTop;
+    const lastX = x - ev.movementX;
+    const lastY = y - ev.movementY;
     if ((ev.buttons & LEFT_CLICK) == LEFT_CLICK) {
-        drawLine(
-            ev.clientX - ev.movementX - canvas.offsetLeft,
-            ev.clientY - ev.movementY - canvas.offsetTop,
-            ev.clientX - canvas.offsetLeft,
-            ev.clientY - canvas.offsetTop
-        );
+        drawLine(x, y, lastX, lastY);
     }
 });
 
