@@ -7,7 +7,9 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 
 interface Point {x: number, y: number}
 
-let displayList: Point[][] = [];
+const displayList: Point[][] = [];
+const undoStack = displayList;
+const redoStack: Point[][] = [];
 
 document.title = APP_NAME;
 
@@ -29,8 +31,17 @@ const canvas = makeElement('canvas', elem => {
 makeElement('button', elem => {
     elem.innerHTML = "Undo";
     elem.onclick = _ => {
-        if (displayList.length > 0) {
-            displayList.pop();
+        if (undoStack.length > 0) {
+            redoStack.push(undoStack.pop()!);
+            canvas.dispatchEvent(new Event('drawing-changed'));
+        }
+    };
+});
+makeElement('button', elem => {
+    elem.innerHTML = "Redo";
+    elem.onclick = _ => {
+        if (redoStack.length > 0) {
+            undoStack.push(redoStack.pop()!)
             canvas.dispatchEvent(new Event('drawing-changed'));
         }
     };
