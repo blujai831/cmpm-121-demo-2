@@ -14,19 +14,19 @@ const redoStack: Point[][] = [];
 document.title = APP_NAME;
 
 function makeElement<Tag extends keyof HTMLElementTagNameMap>(
-    what: Tag, how?: (elem: HTMLElementTagNameMap[Tag]) => void
+    parent: Node, what: Tag, attrs?: Partial<HTMLElementTagNameMap[Tag]>,
+    how?: (elem: HTMLElementTagNameMap[Tag]) => void
 ): HTMLElementTagNameMap[Tag] {
     const elem = document.createElement(what);
+    if (attrs !== undefined) Object.assign(elem, attrs);
     how?.call(elem, elem);
-    app.appendChild(elem);
+    parent.appendChild(elem);
     return elem;
 }
 
-makeElement('h1', elem => elem.innerHTML = APP_NAME);
-const canvas = makeElement('canvas', elem => {
-    elem.id = 'user-drawing-area';
-    elem.width = 256;
-    elem.height = 256;
+makeElement(app, 'h1', {}, elem => elem.innerHTML = APP_NAME);
+const canvas = makeElement(app, 'canvas', {
+    id: 'user-drawing-area', width: 256, height: 256
 });
 
 function drawingUndo(): boolean {
@@ -50,18 +50,9 @@ function drawingClear(): void {
     canvas.dispatchEvent(new Event('drawing-changed'));
 }
 
-makeElement('button', elem => {
-    elem.innerHTML = "Undo";
-    elem.onclick = drawingUndo;
-});
-makeElement('button', elem => {
-    elem.innerHTML = "Redo";
-    elem.onclick = drawingRedo;
-});
-makeElement('button', elem => {
-    elem.innerHTML = "Clear";
-    elem.onclick = drawingClear;
-});
+makeElement(app, 'button', {innerHTML: "Undo", onclick: drawingUndo});
+makeElement(app, 'button', {innerHTML: "Redo", onclick: drawingRedo});
+makeElement(app, 'button', {innerHTML: "Clear", onclick: drawingClear});
 
 const canvasContext: CanvasRenderingContext2D = (() => {
     const result = canvas.getContext('2d');
