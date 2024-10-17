@@ -7,10 +7,14 @@ const LEFT_CLICK = 0 as const;
 const LEFT_CLICK_FLAG = 1 as const;
 
 const DRAWING_TOOLS = {
-    "Thin Marker": (posn: Point) =>
-        new DrawStrokeCommand(posn, 2),
-    "Thick Marker": (posn: Point) =>
-        new DrawStrokeCommand(posn, 6)
+    "Thin Marker": {
+        command: (posn: Point) => new DrawStrokeCommand(posn, 2),
+        cursor: (posn: Point) => DrawStrokeCommand.makeCursor(posn, 2)
+    },
+    "Thick Marker": {
+        command: (posn: Point) => new DrawStrokeCommand(posn, 6),
+        cursor: (posn: Point) => DrawStrokeCommand.makeCursor(posn, 6)
+    }
 } as const;
 
 // Interfaces
@@ -21,6 +25,16 @@ interface DrawCommand {
     display(ctx: CanvasRenderingContext2D): void;
 }
 
+interface DrawCursor {
+    posn?: Point;
+    draw(ctx: CanvasRenderingContext2D): void;
+}
+
+interface DrawTool {
+    command: (posn: Point) => DrawCommand,
+    cursor: (posn: Point) => DrawCursor
+}
+
 // Dynamic globals
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -28,6 +42,7 @@ const displayList: DrawCommand[] = [];
 const undoStack = displayList;
 const redoStack: DrawCommand[] = [];
 let drawingTool: keyof typeof DRAWING_TOOLS;
+let drawingCursor: DrawCursor | null = null;
 
 // Utility functions
 
@@ -92,12 +107,31 @@ function drawingClear(): void {
 
 function drawingBeginUndoStep(posn: Point): void {
     redoStack.length = 0;
-    undoStack.push(DRAWING_TOOLS[drawingTool](posn));
+    undoStack.push(DRAWING_TOOLS[drawingTool].command(posn));
 }
 
 function drawingSetTool(which: keyof typeof DRAWING_TOOLS): void {
     drawingTool = which;
+    drawingCursor = null;
     toolButtonsDiv.dispatchEvent(new Event('tool-changed'));
+}
+
+function drawingUpdate(): void {
+    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+    for (const command of displayList) command.display(canvasContext);
+    if (drawingCursor !== null) drawingCursor.draw(canvasContext);
+}
+
+function drawingShowCursor(posn: Point): void {
+    if (drawingCursor === null) {
+        drawingCursor = DRAWING_TOOLS[drawingTool].cursor(posn);
+    } else {
+        drawingCursor.posn = posn;
+    }
+}
+
+function drawingHideCursor(): void {
+    drawingCursor = null;
 }
 
 class DrawStrokeCommand implements DrawCommand {
@@ -124,6 +158,22 @@ class DrawStrokeCommand implements DrawCommand {
             lastPosn = posn;
         }
     }
+    public static makeCursor(posn: Point, toolWidth: number): DrawCursor {
+        return {
+            posn,
+            draw(ctx: CanvasRenderingContext2D): void {
+                if (this.posn !== undefined) {
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.ellipse(this.posn.x, this.posn.y,
+                        toolWidth/2, toolWidth/2,
+                        0, 0, 2*Math.PI);
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+            }
+        };
+    }
 }
 
 // UI input
@@ -147,7 +197,6 @@ canvas.addEventListener('mousedown', ev => {
             x: ev.clientX - canvas.offsetLeft,
             y: ev.clientY - canvas.offsetTop
         });
-        canvas.dispatchEvent(new Event('drawing-changed'));
     }
 });
 
@@ -160,18 +209,20 @@ canvas.addEventListener('mousemove', ev => {
         (ev.buttons & LEFT_CLICK_FLAG) == LEFT_CLICK_FLAG &&
         displayList.length > 0
     ) {
+        drawingHideCursor();
         const command = displayList[displayList.length - 1];
         if (command instanceof DrawStrokeCommand) {
             command.drag(posn);
             canvas.dispatchEvent(new Event('drawing-changed'));
         }
+    } else {
+        drawingShowCursor(posn);
     }
+    canvas.dispatchEvent(new Event('tool-moved'));
 });
 
-canvas.addEventListener('drawing-changed', _ => {
-    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
-    for (const command of displayList) command.display(canvasContext);
-});
+canvas.addEventListener('drawing-changed', _ => drawingUpdate());
+canvas.addEventListener('tool-moved', _ => drawingUpdate());
 
 // Runtime initialization
 
