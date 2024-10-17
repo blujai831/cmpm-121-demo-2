@@ -156,13 +156,14 @@ canvas.addEventListener('mousemove', ev => {
         x: ev.clientX - canvas.offsetLeft,
         y: ev.clientY - canvas.offsetTop
     };
-    if ((ev.buttons & LEFT_CLICK_FLAG) == LEFT_CLICK_FLAG) {
-        if (displayList.length > 0) {
-            const command = displayList[displayList.length - 1];
-            if (command instanceof DrawStrokeCommand) {
-                command.drag(posn);
-                canvas.dispatchEvent(new Event('drawing-changed'));
-            }
+    if (
+        (ev.buttons & LEFT_CLICK_FLAG) == LEFT_CLICK_FLAG &&
+        displayList.length > 0
+    ) {
+        const command = displayList[displayList.length - 1];
+        if (command instanceof DrawStrokeCommand) {
+            command.drag(posn);
+            canvas.dispatchEvent(new Event('drawing-changed'));
         }
     }
 });
