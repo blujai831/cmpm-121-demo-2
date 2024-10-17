@@ -1,15 +1,27 @@
 import "./style.css";
 
-const APP_NAME = "Sticker Sketchpad";
-const LEFT_CLICK = 0;
-const LEFT_CLICK_FLAG = 1;
-const app = document.querySelector<HTMLDivElement>("#app")!;
+// Readonly constants
+
+const APP_NAME = "Sticker Sketchpad" as const;
+const LEFT_CLICK = 0 as const;
+const LEFT_CLICK_FLAG = 1 as const;
+
+// Interfaces
 
 interface Point {x: number, y: number}
 
-const displayList: Point[][] = [];
+interface DrawCommand {
+    display(ctx: CanvasRenderingContext2D): void;
+}
+
+// Dynamic constants
+
+const app = document.querySelector<HTMLDivElement>("#app")!;
+const displayList: DrawCommand[] = [];
 const undoStack = displayList;
-const redoStack: Point[][] = [];
+const redoStack: DrawCommand[] = [];
+
+// UI output
 
 document.title = APP_NAME;
 
@@ -28,6 +40,8 @@ makeElement(app, 'h1', {}, elem => elem.innerHTML = APP_NAME);
 const canvas = makeElement(app, 'canvas', {
     id: 'user-drawing-area', width: 256, height: 256
 });
+
+// App implementation
 
 const canvasContext: CanvasRenderingContext2D = (() => {
     const result = canvas.getContext('2d');
@@ -59,18 +73,35 @@ function drawingClear(): void {
     canvas.dispatchEvent(new Event('drawing-changed'));
 }
 
-function drawingBeginUndoStep(): void {
+function drawingBeginUndoStep(command: DrawCommand): void {
     redoStack.length = 0;
-    undoStack.push([]);
+    undoStack.push(command);
 }
 
-function drawLine(from: Point, to: Point): void {
-    canvasContext.beginPath();
-    canvasContext.moveTo(from.x, from.y);
-    canvasContext.lineTo(to.x, to.y);
-    canvasContext.closePath();
-    canvasContext.stroke();
+class DrawStrokeCommand implements DrawCommand {
+    private points: Point[];
+    public constructor(start: Point) {
+        this.points = [start];
+    }
+    public drag(where: Point): void {
+        this.points.push(where);
+    }
+    public display(ctx: CanvasRenderingContext2D): void {
+        let lastPosn: Point | null = null;
+        for (const posn of this.points) {
+            if (lastPosn !== null) {
+                ctx.beginPath();
+                ctx.moveTo(lastPosn.x, lastPosn.y);
+                ctx.lineTo(posn.x, posn.y);
+                ctx.closePath();
+                ctx.stroke();
+            }
+            lastPosn = posn;
+        }
+    }
 }
+
+// UI input
 
 makeElement(app, 'button', {innerHTML: "Undo", onclick: drawingUndo});
 makeElement(app, 'button', {innerHTML: "Redo", onclick: drawingRedo});
@@ -78,7 +109,11 @@ makeElement(app, 'button', {innerHTML: "Clear", onclick: drawingClear});
 
 canvas.addEventListener('mousedown', ev => {
     if (ev.button == LEFT_CLICK) {
-        drawingBeginUndoStep();
+        drawingBeginUndoStep(new DrawStrokeCommand({
+            x: ev.clientX - canvas.offsetLeft,
+            y: ev.clientY - canvas.offsetTop
+        }));
+        canvas.dispatchEvent(new Event('drawing-changed'));
     }
 });
 
@@ -89,22 +124,16 @@ canvas.addEventListener('mousemove', ev => {
     };
     if ((ev.buttons & LEFT_CLICK_FLAG) == LEFT_CLICK_FLAG) {
         if (displayList.length > 0) {
-            const pointList = displayList[displayList.length - 1];
-            pointList.push(posn);
-            canvas.dispatchEvent(new Event('drawing-changed'));
+            const command = displayList[displayList.length - 1];
+            if (command instanceof DrawStrokeCommand) {
+                command.drag(posn);
+                canvas.dispatchEvent(new Event('drawing-changed'));
+            }
         }
     }
 });
 
 canvas.addEventListener('drawing-changed', _ => {
     canvasContext.clearRect(0, 0, canvas.width, canvas.height);
-    for (const pointList of displayList) {
-        let lastPosn: Point | null = null;
-        for (const posn of pointList) {
-            if (lastPosn !== null) {
-                drawLine(lastPosn, posn);
-            }
-            lastPosn = posn;
-        }
-    }
+    for (const command of displayList) command.display(canvasContext);
 });
