@@ -89,6 +89,14 @@ canvas#user-drawing-area {
   margin: 0 auto;
 }
 
+#tool-buttons button {
+  border: 2px solid transparent;
+}
+
+#tool-buttons button:disabled {
+  border-color: gray;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
