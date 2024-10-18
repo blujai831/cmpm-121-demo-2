@@ -85,15 +85,18 @@ canvas#user-drawing-area {
   border: 2px solid black;
   border-radius: 5%;
   box-shadow: black 8px 8px;
-  display: block;
   margin: 0 auto;
   cursor: none;
 }
 
+#tool-buttons {
+  display: inline-block;
+  max-width: 10em;
+  vertical-align: top;
+}
 #tool-buttons button {
   border: 2px solid transparent;
 }
-
 #tool-buttons button:disabled {
   border-color: gray;
 }

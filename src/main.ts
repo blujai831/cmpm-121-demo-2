@@ -79,7 +79,7 @@ function forEachAdjacentPair<T>(
     }
 }
 
-// UI output
+// UI general layout
 
 document.title = APP_NAME;
 
@@ -88,6 +88,7 @@ const canvas = makeElement(app, 'canvas', {
     id: 'user-drawing-area', width: 256, height: 256
 });
 const toolButtonsDiv = makeElement(app, 'div', {id: 'tool-buttons'});
+const actionButtonsDiv = makeElement(app, 'div', {id: 'action-buttons'});
 
 const canvasContext: CanvasRenderingContext2D = (() => {
     const result = canvas.getContext('2d');
@@ -193,7 +194,7 @@ function makeCircleCursorDrawCommand(options: {
     }
 };};
 
-// UI input
+// UI input handling
 
 for (const toolName of keysAsUnion(DRAWING_TOOLS)) {
     makeElement(toolButtonsDiv, 'button', {
@@ -214,10 +215,13 @@ for (const action of [
     {name: "Redo", doWhat: drawingRedo},
     {name: "Clear", doWhat: drawingClear}
 ]) {
-    makeElement(app, 'button', {innerHTML: action.name, onclick: _ => {
-        action.doWhat();
-        canvas.dispatchEvent(new Event('drawing-changed'));
-    }});
+    makeElement(actionButtonsDiv, 'button', {
+        innerHTML: action.name,
+        onclick: _ => {
+            action.doWhat();
+            canvas.dispatchEvent(new Event('drawing-changed'));
+        }
+    });
 }
 
 canvas.addEventListener('mousedown', ev => {
