@@ -8,12 +8,20 @@ const LEFT_CLICK_FLAG = 1 as const;
 
 const DRAWING_TOOLS = {
     "Thin Marker": {
-        command: (posn: Point) => new DrawStrokeCommand(posn, 2),
-        cursor: (posn: Point) => DrawStrokeCommand.makeCursor(posn, 2)
+        makeDrawCommand(): DrawCommand {
+            return makeMarkerDrawCommand({lineWidth: 2});
+        },
+        makeCursorDrawCommand(): DrawCommand {
+            return makeCircleCursorDrawCommand({radius: 1});
+        }
     },
     "Thick Marker": {
-        command: (posn: Point) => new DrawStrokeCommand(posn, 6),
-        cursor: (posn: Point) => DrawStrokeCommand.makeCursor(posn, 6)
+        makeDrawCommand(): DrawCommand {
+            return makeMarkerDrawCommand({lineWidth: 6});
+        },
+        makeCursorDrawCommand(): DrawCommand {
+            return makeCircleCursorDrawCommand({radius: 3});
+        }
     }
 } as const;
 
@@ -22,17 +30,13 @@ const DRAWING_TOOLS = {
 interface Point {x: number, y: number}
 
 interface DrawCommand {
-    display(ctx: CanvasRenderingContext2D): void;
-}
-
-interface DrawCursor {
-    posn?: Point;
+    move(posn: Point): void;
     draw(ctx: CanvasRenderingContext2D): void;
 }
 
-interface DrawTool {
-    command: (posn: Point) => DrawCommand,
-    cursor: (posn: Point) => DrawCursor
+interface DrawingTool {
+    makeDrawCommand(): DrawCommand;
+    makeCursorDrawCommand(): DrawCommand;
 }
 
 // Dynamic globals
@@ -42,7 +46,7 @@ const displayList: DrawCommand[] = [];
 const undoStack = displayList;
 const redoStack: DrawCommand[] = [];
 let drawingTool: keyof typeof DRAWING_TOOLS;
-let drawingCursor: DrawCursor | null = null;
+let cursorDrawCommand: DrawCommand | null;
 
 // Utility functions
 
@@ -65,6 +69,16 @@ function makeElement<Tag extends keyof HTMLElementTagNameMap>(
     return elem;
 }
 
+function forEachAdjacentPair<T>(
+    ts: T[], doWhat: (t1: T, t2: T) => void
+): void {
+    let lastT: T | null = null;
+    for (const t of ts) {
+        if (lastT !== null) doWhat(lastT, t);
+        lastT = t;
+    }
+}
+
 // UI output
 
 document.title = APP_NAME;
@@ -75,18 +89,17 @@ const canvas = makeElement(app, 'canvas', {
 });
 const toolButtonsDiv = makeElement(app, 'div', {id: 'tool-buttons'});
 
-// App implementation
-
 const canvasContext: CanvasRenderingContext2D = (() => {
     const result = canvas.getContext('2d');
     if (result === null) throw Error("No 2D rendering support");
     else return result;
 })();
 
+// Tool-agnostic canvas operations
+
 function drawingUndo(): boolean {
     if (undoStack.length > 0) {
         redoStack.push(undoStack.pop()!);
-        canvas.dispatchEvent(new Event('drawing-changed'));
         return true;
     } else return false;
 }
@@ -94,7 +107,6 @@ function drawingUndo(): boolean {
 function drawingRedo(): boolean {
     if (redoStack.length > 0) {
         undoStack.push(redoStack.pop()!)
-        canvas.dispatchEvent(new Event('drawing-changed'));
         return true;
     } else return false;
 }
@@ -102,101 +114,118 @@ function drawingRedo(): boolean {
 function drawingClear(): void {
     redoStack.length = 0;
     displayList.length = 0;
-    canvas.dispatchEvent(new Event('drawing-changed'));
 }
 
-function drawingBeginUndoStep(posn: Point): void {
+function drawingBeginUndoStep(): void {
     redoStack.length = 0;
-    undoStack.push(DRAWING_TOOLS[drawingTool].command(posn));
+    undoStack.push(DRAWING_TOOLS[drawingTool].makeDrawCommand());
+}
+
+function drawingGetUndoStep(): DrawCommand | null {
+    if (undoStack.length > 0) return undoStack[undoStack.length - 1];
+    else return null;
 }
 
 function drawingSetTool(which: keyof typeof DRAWING_TOOLS): void {
     drawingTool = which;
-    drawingCursor = null;
-    toolButtonsDiv.dispatchEvent(new Event('tool-changed'));
+    cursorDrawCommand = DRAWING_TOOLS[drawingTool].makeCursorDrawCommand();
 }
 
-function drawingUpdate(): void {
-    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
-    for (const command of displayList) command.display(canvasContext);
-    if (drawingCursor !== null) drawingCursor.draw(canvasContext);
+function drawingUpdate(
+    canvas: HTMLCanvasElement,
+    ctx: CanvasRenderingContext2D
+): void {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const command of displayList) command.draw(ctx);
+    if (cursorDrawCommand !== null) cursorDrawCommand.draw(ctx);
 }
 
-function drawingShowCursor(posn: Point): void {
-    if (drawingCursor === null) {
-        drawingCursor = DRAWING_TOOLS[drawingTool].cursor(posn);
-    } else {
-        drawingCursor.posn = posn;
-    }
+function drawingShowCursor(): void {
+    cursorDrawCommand = DRAWING_TOOLS[drawingTool].makeCursorDrawCommand();
 }
 
 function drawingHideCursor(): void {
-    drawingCursor = null;
+    cursorDrawCommand = null;
 }
 
-class DrawStrokeCommand implements DrawCommand {
-    private points: Point[];
-    private lineWidth: number;
-    public constructor(start: Point, lineWidth: number) {
-        this.points = [start];
-        this.lineWidth = lineWidth;
-    }
-    public drag(where: Point): void {
-        this.points.push(where);
-    }
-    public display(ctx: CanvasRenderingContext2D): void {
-        let lastPosn: Point | null = null;
-        for (const posn of this.points) {
-            if (lastPosn !== null) {
-                ctx.lineWidth = this.lineWidth;
-                ctx.beginPath();
-                ctx.moveTo(lastPosn.x, lastPosn.y);
-                ctx.lineTo(posn.x, posn.y);
-                ctx.closePath();
-                ctx.stroke();
-            }
-            lastPosn = posn;
-        }
-    }
-    public static makeCursor(posn: Point, toolWidth: number): DrawCursor {
-        return {
-            posn,
-            draw(ctx: CanvasRenderingContext2D): void {
-                if (this.posn !== undefined) {
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.ellipse(this.posn.x, this.posn.y,
-                        toolWidth/2, toolWidth/2,
-                        0, 0, 2*Math.PI);
-                    ctx.closePath();
-                    ctx.stroke();
-                }
-            }
-        };
-    }
+function drawPath(
+    ctx: CanvasRenderingContext2D,
+    how: (ctx: CanvasRenderingContext2D) => void
+): void {
+    ctx.beginPath();
+    how(ctx);
+    ctx.closePath();
+    ctx.stroke();
 }
+
+function drawLine(ctx: CanvasRenderingContext2D, p1: Point, p2: Point): void {
+    drawPath(ctx, ctx => {ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);});
+}
+
+function drawCircle(
+    ctx: CanvasRenderingContext2D, posn: Point, radius: number
+): void {
+    drawPath(ctx, ctx =>
+        ctx.ellipse(posn.x, posn.y, radius, radius, 0, 0, 2*Math.PI));
+}
+
+// Tool implementations
+
+function makeMarkerDrawCommand(options: {
+    lineWidth: number
+}) {return {
+    points: [] as Point[],
+    move(posn: Point) {this.points.push(posn);},
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.lineWidth = options.lineWidth;
+        forEachAdjacentPair(this.points, (p1, p2) => drawLine(ctx, p1, p2));
+    }
+};};
+
+function makeCircleCursorDrawCommand(options: {
+    radius: number
+}) {return {
+    posn: {x: 0, y: 0},
+    move(posn: Point) {this.posn = posn;},
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.lineWidth = 1;
+        drawCircle(ctx, this.posn, options.radius);
+    }
+};};
 
 // UI input
 
 for (const toolName of keysAsUnion(DRAWING_TOOLS)) {
     makeElement(toolButtonsDiv, 'button', {
         innerHTML: toolName,
-        onclick: _ => drawingSetTool(toolName)
+        onclick: _ => {
+            if (drawingTool != toolName) {
+                drawingSetTool(toolName);
+                toolButtonsDiv.dispatchEvent(new Event('tool-changed'));
+            }
+        }
     }, elem => toolButtonsDiv.addEventListener('tool-changed', _ => {
         elem.disabled = (drawingTool == toolName);
     }, true));
 }
 
-makeElement(app, 'button', {innerHTML: "Undo", onclick: drawingUndo});
-makeElement(app, 'button', {innerHTML: "Redo", onclick: drawingRedo});
-makeElement(app, 'button', {innerHTML: "Clear", onclick: drawingClear});
+for (const action of [
+    {name: "Undo", doWhat: drawingUndo},
+    {name: "Redo", doWhat: drawingRedo},
+    {name: "Clear", doWhat: drawingClear}
+]) {
+    makeElement(app, 'button', {innerHTML: action.name, onclick: _ => {
+        action.doWhat();
+        canvas.dispatchEvent(new Event('drawing-changed'));
+    }});
+}
 
 canvas.addEventListener('mousedown', ev => {
     if (ev.button == LEFT_CLICK) {
-        drawingBeginUndoStep({
-            x: ev.clientX - canvas.offsetLeft,
-            y: ev.clientY - canvas.offsetTop
-        });
+        drawingBeginUndoStep();
+        canvas.dispatchEvent(new Event('drawing-changed'));
+        drawingHideCursor();
+        canvas.dispatchEvent(new Event('tool-moved'));
     }
 });
 
@@ -210,21 +239,25 @@ canvas.addEventListener('mousemove', ev => {
         displayList.length > 0
     ) {
         drawingHideCursor();
-        const command = displayList[displayList.length - 1];
-        if (command instanceof DrawStrokeCommand) {
-            command.drag(posn);
+        const command = drawingGetUndoStep();
+        if (command !== null) {
+            command.move(posn);
             canvas.dispatchEvent(new Event('drawing-changed'));
         }
     } else {
-        drawingShowCursor(posn);
+        drawingShowCursor();
+        cursorDrawCommand?.move(posn);
     }
     canvas.dispatchEvent(new Event('tool-moved'));
 });
 
-canvas.addEventListener('drawing-changed', _ => drawingUpdate());
-canvas.addEventListener('tool-moved', _ => drawingUpdate());
+canvas.addEventListener('drawing-changed', _ =>
+    drawingUpdate(canvas, canvasContext));
+canvas.addEventListener('tool-moved', _ =>
+    drawingUpdate(canvas, canvasContext));
 
 // Runtime initialization
 
 drawingSetTool("Thin Marker");
+toolButtonsDiv.dispatchEvent(new Event('tool-changed'));
 canvasContext.strokeStyle = 'black';
