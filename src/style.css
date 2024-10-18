@@ -91,7 +91,7 @@ canvas#user-drawing-area {
 
 #tool-buttons {
   display: inline-block;
-  max-width: 10em;
+  max-width: 12em;
   vertical-align: top;
 }
 #tool-buttons button {

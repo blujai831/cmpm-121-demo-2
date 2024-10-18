@@ -5,7 +5,11 @@ import "./style.css";
 const APP_NAME = "Sticker Sketchpad" as const;
 const LEFT_CLICK = 0 as const;
 const LEFT_CLICK_FLAG = 1 as const;
+const RELIEVED_EMOJI = "\u{1F60C}";
+const EXPRESSIONLESS_EMOJI = "\u{1F611}";
+const PENSIVE_EMOJI = "\u{1F614}";
 
+// This constant cannot easily be refactored for DRY due to lack of CTFE.
 const DRAWING_TOOLS = {
     "Thin Marker": {
         makeDrawCommand(): DrawCommand {
@@ -22,6 +26,30 @@ const DRAWING_TOOLS = {
         makeCursorDrawCommand(): DrawCommand {
             return makeCircleCursorDrawCommand({radius: 3});
         }
+    },
+    [RELIEVED_EMOJI]: {
+        makeDrawCommand(): DrawCommand {
+            return makeStickerDrawCommand({text: RELIEVED_EMOJI});
+        },
+        makeCursorDrawCommand(): DrawCommand {
+            return this.makeDrawCommand();
+        }
+    },
+    [EXPRESSIONLESS_EMOJI]: {
+        makeDrawCommand(): DrawCommand {
+            return makeStickerDrawCommand({text: EXPRESSIONLESS_EMOJI});
+        },
+        makeCursorDrawCommand(): DrawCommand {
+            return this.makeDrawCommand();
+        }
+    },
+    [PENSIVE_EMOJI]: {
+        makeDrawCommand(): DrawCommand {
+            return makeStickerDrawCommand({text: PENSIVE_EMOJI});
+        },
+        makeCursorDrawCommand(): DrawCommand {
+            return this.makeDrawCommand();
+        }
     }
 } as const;
 
@@ -30,6 +58,7 @@ const DRAWING_TOOLS = {
 interface Point {x: number, y: number}
 
 interface DrawCommand {
+    get posn(): Point;
     move(posn: Point): void;
     draw(ctx: CanvasRenderingContext2D): void;
 }
@@ -176,12 +205,16 @@ function makeMarkerDrawCommand(options: {
     lineWidth: number
 }) {return {
     points: [] as Point[],
+    get posn(): Point {
+        if (this.points.length > 0) return this.points[this.points.length - 1];
+        else return {x: NaN, y: NaN};
+    },
     move(posn: Point) {this.points.push(posn);},
     draw(ctx: CanvasRenderingContext2D) {
         ctx.lineWidth = options.lineWidth;
         forEachAdjacentPair(this.points, (p1, p2) => drawLine(ctx, p1, p2));
     }
-};};
+};}
 
 function makeCircleCursorDrawCommand(options: {
     radius: number
@@ -192,7 +225,19 @@ function makeCircleCursorDrawCommand(options: {
         ctx.lineWidth = 1;
         drawCircle(ctx, this.posn, options.radius);
     }
-};};
+};}
+
+function makeStickerDrawCommand(options: {
+    text: string
+}) {return {
+    posn: {...(cursorDrawCommand?.posn || {x: 0, y: 0})},
+    move(posn: Point) {this.posn = posn;},
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(options.text, this.posn.x, this.posn.y);
+    }
+};}
 
 // UI input handling
 
@@ -203,6 +248,7 @@ for (const toolName of keysAsUnion(DRAWING_TOOLS)) {
             if (drawingTool != toolName) {
                 drawingSetTool(toolName);
                 toolButtonsDiv.dispatchEvent(new Event('tool-changed'));
+                canvas.dispatchEvent(new Event('tool-moved'));
             }
         }
     }, elem => toolButtonsDiv.addEventListener('tool-changed', _ => {
@@ -265,3 +311,4 @@ canvas.addEventListener('tool-moved', _ =>
 drawingSetTool("Thin Marker");
 toolButtonsDiv.dispatchEvent(new Event('tool-changed'));
 canvasContext.strokeStyle = 'black';
+canvasContext.font = "48px sans-serif";
