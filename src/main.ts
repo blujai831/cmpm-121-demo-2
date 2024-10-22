@@ -8,15 +8,22 @@ const LEFT_CLICK_FLAG = 1 as const;
 const RELIEVED_EMOJI = "\u{1F60C}" as const;
 const EXPRESSIONLESS_EMOJI = "\u{1F611}" as const;
 const PENSIVE_EMOJI = "\u{1F614}" as const;
+const EXPORT_DOWNLOAD_RESOLUTION = {width: 1024, height: 1024} as const;
 
 // Interfaces
+
+type CanvasMaybeOffscreen = HTMLCanvasElement | OffscreenCanvas;
+
+type CanvasRenderingContext2DMaybeOffscreen =
+    CanvasRenderingContext2D |
+    OffscreenCanvasRenderingContext2D;
 
 interface Point {x: number, y: number}
 
 interface DrawCommand {
     get posn(): Point;
     move(posn: Point): void;
-    draw(ctx: CanvasRenderingContext2D): void;
+    draw(ctx: CanvasRenderingContext2DMaybeOffscreen): void;
 }
 
 interface DrawingTool {
@@ -76,6 +83,24 @@ function forEachAdjacentPair<T>(
     }
 }
 
+function getContext2D(
+    canvas: CanvasMaybeOffscreen
+): CanvasRenderingContext2DMaybeOffscreen {
+    const result = canvas.getContext('2d');
+    if (result === null) throw Error("No 2D rendering support");
+    else return result;
+}
+
+function download(url: string, fname: string): void {
+    const link = document.createElement('a');
+    link.style.display = 'none';
+    link.href = url;
+    link.download = fname;
+    app.appendChild(link);
+    link.click();
+    document.removeChild(link);
+}
+
 // UI general layout
 
 document.title = APP_NAME;
@@ -87,11 +112,7 @@ const canvas = makeElement(app, 'canvas', {
 const toolButtonsDiv = makeElement(app, 'div', {id: 'tool-buttons'});
 const actionButtonsDiv = makeElement(app, 'div', {id: 'action-buttons'});
 
-const canvasContext: CanvasRenderingContext2D = (() => {
-    const result = canvas.getContext('2d');
-    if (result === null) throw Error("No 2D rendering support");
-    else return result;
-})();
+const canvasContext = getContext2D(canvas);
 
 // Tool-agnostic canvas operations
 
@@ -130,8 +151,8 @@ function drawingSetTool(which: string): void {
 }
 
 function drawingUpdate(
-    canvas: HTMLCanvasElement,
-    ctx: CanvasRenderingContext2D
+    canvas: CanvasMaybeOffscreen,
+    ctx: CanvasRenderingContext2DMaybeOffscreen
 ): void {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (const command of displayList) command.draw(ctx);
@@ -147,8 +168,8 @@ function drawingHideCursor(): void {
 }
 
 function drawPath(
-    ctx: CanvasRenderingContext2D,
-    how: (ctx: CanvasRenderingContext2D) => void
+    ctx: CanvasRenderingContext2DMaybeOffscreen,
+    how: (ctx: CanvasRenderingContext2DMaybeOffscreen) => void
 ): void {
     ctx.beginPath();
     how(ctx);
@@ -156,15 +177,39 @@ function drawPath(
     ctx.stroke();
 }
 
-function drawLine(ctx: CanvasRenderingContext2D, p1: Point, p2: Point): void {
+function drawLine(
+    ctx: CanvasRenderingContext2DMaybeOffscreen,
+    p1: Point, p2: Point
+): void {
     drawPath(ctx, ctx => {ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);});
 }
 
 function drawCircle(
-    ctx: CanvasRenderingContext2D, posn: Point, radius: number
+    ctx: CanvasRenderingContext2DMaybeOffscreen,
+    posn: Point, radius: number
 ): void {
     drawPath(ctx, ctx =>
         ctx.ellipse(posn.x, posn.y, radius, radius, 0, 0, 2*Math.PI));
+}
+
+function drawingExport(where: CanvasMaybeOffscreen): void {
+    const cursorWasShown = cursorDrawCommand !== null;
+    drawingHideCursor();
+    const ctx = getContext2D(where);
+    ctx.scale(where.width/canvas.width, where.height/canvas.height);
+    drawingUpdate(where, ctx);
+    if (cursorWasShown) drawingShowCursor();
+}
+
+async function drawingExportToDownload(): Promise<void> {
+    const target = new OffscreenCanvas(
+        EXPORT_DOWNLOAD_RESOLUTION.width,
+        EXPORT_DOWNLOAD_RESOLUTION.height
+    );
+    drawingExport(target);
+    const pngData = await target.convertToBlob();
+    const url = URL.createObjectURL(pngData);
+    download(url, "sketch.png");
 }
 
 // Tool implementations
@@ -176,7 +221,7 @@ function makeMarkerDrawCommand(options: MarkerOptions) {return {
         else return {x: NaN, y: NaN};
     },
     move(posn: Point) {this.points.push(posn);},
-    draw(ctx: CanvasRenderingContext2D) {
+    draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
         ctx.lineWidth = options.lineWidth;
         forEachAdjacentPair(this.points, (p1, p2) => drawLine(ctx, p1, p2));
     }
@@ -185,7 +230,7 @@ function makeMarkerDrawCommand(options: MarkerOptions) {return {
 function makeCircleCursorDrawCommand(options: CircleOptions) {return {
     posn: {x: 0, y: 0},
     move(posn: Point) {this.posn = posn;},
-    draw(ctx: CanvasRenderingContext2D) {
+    draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
         ctx.lineWidth = 1;
         drawCircle(ctx, this.posn, options.radius);
     }
@@ -194,7 +239,7 @@ function makeCircleCursorDrawCommand(options: CircleOptions) {return {
 function makeStickerDrawCommand(options: StickerOptions) {return {
     posn: {...(cursorDrawCommand?.posn || {x: 0, y: 0})},
     move(posn: Point) {this.posn = posn;},
-    draw(ctx: CanvasRenderingContext2D) {
+    draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(options.text, this.posn.x, this.posn.y);
@@ -275,7 +320,8 @@ for (const action of [
     {name: "Undo", doWhat: drawingUndo},
     {name: "Redo", doWhat: drawingRedo},
     {name: "Clear", doWhat: drawingClear},
-    {name: "Custom sticker...", doWhat: tryDefineCustomStickerFromPrompt}
+    {name: "Custom sticker...", doWhat: tryDefineCustomStickerFromPrompt},
+    {name: "Export...", doWhat: drawingExportToDownload}
 ]) makeActionButton(action.name, action.doWhat);
 
 canvas.addEventListener('mousedown', ev => {
