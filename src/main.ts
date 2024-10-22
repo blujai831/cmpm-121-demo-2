@@ -232,7 +232,7 @@ function makeMarkerDrawCommand(options: MarkerOptions) {return {
 };}
 
 function makeCircleCursorDrawCommand(options: CircleOptions) {return {
-    posn: {x: 0, y: 0},
+    posn: {x: NaN, y: NaN},
     move(posn: Point) {this.posn = posn;},
     draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
         ctx.lineWidth = 1;
@@ -241,7 +241,7 @@ function makeCircleCursorDrawCommand(options: CircleOptions) {return {
 };}
 
 function makeStickerDrawCommand(options: StickerOptions) {return {
-    posn: {...(cursorDrawCommand?.posn || {x: 0, y: 0})},
+    posn: {...(cursorDrawCommand?.posn || {x: NaN, y: NaN})},
     move(posn: Point) {this.posn = posn;},
     draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
         ctx.textAlign = 'center';
