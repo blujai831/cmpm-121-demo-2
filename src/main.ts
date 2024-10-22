@@ -9,50 +9,6 @@ const RELIEVED_EMOJI = "\u{1F60C}";
 const EXPRESSIONLESS_EMOJI = "\u{1F611}";
 const PENSIVE_EMOJI = "\u{1F614}";
 
-// This constant cannot easily be refactored for DRY due to lack of CTFE.
-const DRAWING_TOOLS = {
-    "Thin Marker": {
-        makeDrawCommand(): DrawCommand {
-            return makeMarkerDrawCommand({lineWidth: 2});
-        },
-        makeCursorDrawCommand(): DrawCommand {
-            return makeCircleCursorDrawCommand({radius: 1});
-        }
-    },
-    "Thick Marker": {
-        makeDrawCommand(): DrawCommand {
-            return makeMarkerDrawCommand({lineWidth: 6});
-        },
-        makeCursorDrawCommand(): DrawCommand {
-            return makeCircleCursorDrawCommand({radius: 3});
-        }
-    },
-    [RELIEVED_EMOJI]: {
-        makeDrawCommand(): DrawCommand {
-            return makeStickerDrawCommand({text: RELIEVED_EMOJI});
-        },
-        makeCursorDrawCommand(): DrawCommand {
-            return this.makeDrawCommand();
-        }
-    },
-    [EXPRESSIONLESS_EMOJI]: {
-        makeDrawCommand(): DrawCommand {
-            return makeStickerDrawCommand({text: EXPRESSIONLESS_EMOJI});
-        },
-        makeCursorDrawCommand(): DrawCommand {
-            return this.makeDrawCommand();
-        }
-    },
-    [PENSIVE_EMOJI]: {
-        makeDrawCommand(): DrawCommand {
-            return makeStickerDrawCommand({text: PENSIVE_EMOJI});
-        },
-        makeCursorDrawCommand(): DrawCommand {
-            return this.makeDrawCommand();
-        }
-    }
-} as const;
-
 // Interfaces
 
 interface Point {x: number, y: number}
@@ -68,24 +24,26 @@ interface DrawingTool {
     makeCursorDrawCommand(): DrawCommand;
 }
 
+type DrawingToolName = string;
+
 // Dynamic globals
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const displayList: DrawCommand[] = [];
 const undoStack = displayList;
 const redoStack: DrawCommand[] = [];
-let drawingTool: keyof typeof DRAWING_TOOLS;
+let drawingTool: DrawingToolName;
 let cursorDrawCommand: DrawCommand | null;
 
-// Utility functions
+const drawingTools: Record<DrawingToolName, DrawingTool> = {
+    "Thin Marker": makeMarkerDrawingTool({lineWidth: 2}),
+    "Thick Marker": makeMarkerDrawingTool({lineWidth: 6}),
+    [RELIEVED_EMOJI]: makeStickerDrawingTool({text: RELIEVED_EMOJI}),
+    [EXPRESSIONLESS_EMOJI]: makeStickerDrawingTool({text: EXPRESSIONLESS_EMOJI}),
+    [PENSIVE_EMOJI]: makeStickerDrawingTool({text: PENSIVE_EMOJI})
+};
 
-/* Technique learned from:
-https://www.totaltypescript.com/iterate-over-object-keys-in-typescript */
-function keysAsUnion<T extends object>(obj: T): (keyof T)[] {
-    const result: (keyof T)[] = [];
-    for (const key in obj) result.push(key);
-    return result;
-}
+// Utility functions
 
 function makeElement<Tag extends keyof HTMLElementTagNameMap>(
     parent: Node, what: Tag, attrs?: Partial<HTMLElementTagNameMap[Tag]>,
@@ -148,7 +106,7 @@ function drawingClear(): void {
 
 function drawingBeginUndoStep(): void {
     redoStack.length = 0;
-    undoStack.push(DRAWING_TOOLS[drawingTool].makeDrawCommand());
+    undoStack.push(drawingTools[drawingTool].makeDrawCommand());
 }
 
 function drawingGetUndoStep(): DrawCommand | null {
@@ -156,9 +114,9 @@ function drawingGetUndoStep(): DrawCommand | null {
     else return null;
 }
 
-function drawingSetTool(which: keyof typeof DRAWING_TOOLS): void {
+function drawingSetTool(which: DrawingToolName): void {
     drawingTool = which;
-    cursorDrawCommand = DRAWING_TOOLS[drawingTool].makeCursorDrawCommand();
+    cursorDrawCommand = drawingTools[drawingTool].makeCursorDrawCommand();
 }
 
 function drawingUpdate(
@@ -171,7 +129,7 @@ function drawingUpdate(
 }
 
 function drawingShowCursor(): void {
-    cursorDrawCommand = DRAWING_TOOLS[drawingTool].makeCursorDrawCommand();
+    cursorDrawCommand = drawingTools[drawingTool].makeCursorDrawCommand();
 }
 
 function drawingHideCursor(): void {
@@ -239,9 +197,27 @@ function makeStickerDrawCommand(options: {
     }
 };}
 
+function makeMarkerDrawingTool(options: {lineWidth: number}): DrawingTool {return {
+    makeDrawCommand(): DrawCommand {
+        return makeMarkerDrawCommand({lineWidth: options.lineWidth});
+    },
+    makeCursorDrawCommand(): DrawCommand {
+        return makeCircleCursorDrawCommand({radius: options.lineWidth/2});
+    }
+};}
+
+function makeStickerDrawingTool(options: {text: string}): DrawingTool {return {
+    makeDrawCommand(): DrawCommand {
+        return makeStickerDrawCommand({text: options.text});
+    },
+    makeCursorDrawCommand(): DrawCommand {
+        return this.makeDrawCommand();
+    }
+};}
+
 // UI input handling
 
-for (const toolName of keysAsUnion(DRAWING_TOOLS)) {
+for (const toolName of Object.keys(drawingTools)) {
     makeElement(toolButtonsDiv, 'button', {
         innerHTML: toolName,
         onclick: _ => {
