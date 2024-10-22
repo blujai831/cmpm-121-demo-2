@@ -24,18 +24,16 @@ interface DrawingTool {
     makeCursorDrawCommand(): DrawCommand;
 }
 
-type DrawingToolName = string;
-
 // Dynamic globals
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const displayList: DrawCommand[] = [];
 const undoStack = displayList;
 const redoStack: DrawCommand[] = [];
-let drawingTool: DrawingToolName;
+let drawingTool: string;
 let cursorDrawCommand: DrawCommand | null;
 
-const drawingTools: Record<DrawingToolName, DrawingTool> = {
+const drawingTools: Record<string, DrawingTool> = {
     "Thin Marker": makeMarkerDrawingTool({lineWidth: 2}),
     "Thick Marker": makeMarkerDrawingTool({lineWidth: 6}),
     [RELIEVED_EMOJI]: makeStickerDrawingTool({text: RELIEVED_EMOJI}),
@@ -114,7 +112,7 @@ function drawingGetUndoStep(): DrawCommand | null {
     else return null;
 }
 
-function drawingSetTool(which: DrawingToolName): void {
+function drawingSetTool(which: string): void {
     drawingTool = which;
     cursorDrawCommand = drawingTools[drawingTool].makeCursorDrawCommand();
 }
