@@ -219,8 +219,8 @@ function makeStickerDrawingTool(options: {
 
 // UI input handling
 
-for (const toolName of Object.keys(drawingTools)) {
-    makeElement(toolButtonsDiv, 'button', {
+function makeToolButton(toolName: string): HTMLButtonElement {
+    return makeElement(toolButtonsDiv, 'button', {
         innerHTML: toolName,
         onclick: _ => {
             if (drawingTool != toolName) {
@@ -234,19 +234,47 @@ for (const toolName of Object.keys(drawingTools)) {
     }, true));
 }
 
-for (const action of [
-    {name: "Undo", doWhat: drawingUndo},
-    {name: "Redo", doWhat: drawingRedo},
-    {name: "Clear", doWhat: drawingClear}
-]) {
-    makeElement(actionButtonsDiv, 'button', {
-        innerHTML: action.name,
+function makeActionButton(
+    name: string, doWhat: () => void
+): HTMLButtonElement {
+    return makeElement(actionButtonsDiv, 'button', {
+        innerHTML: name,
         onclick: _ => {
-            action.doWhat();
+            doWhat();
             canvas.dispatchEvent(new Event('drawing-changed'));
         }
     });
 }
+
+function defineCustomSticker(options: {text: string}): DrawingTool {
+    if (options.text in drawingTools) {
+        return drawingTools[options.text];
+    } else {
+        const result = makeStickerDrawingTool(options);
+        drawingTools[options.text] = result;
+        makeToolButton(options.text);
+        return result;
+    }
+}
+
+function tryDefineCustomStickerFromPrompt(): DrawingTool | null {
+    const text = prompt("Sticker text");
+    if (text === null) return null;
+    else {
+        const result = defineCustomSticker({text});
+        drawingSetTool(text);
+        return result;
+    }
+}
+
+for (const toolName of Object.keys(drawingTools)) makeToolButton(toolName);
+
+for (const action of [
+    {name: "Undo", doWhat: drawingUndo},
+    {name: "Redo", doWhat: drawingRedo},
+    {name: "Clear", doWhat: drawingClear},
+    {name: "Custom sticker...", doWhat: tryDefineCustomStickerFromPrompt}
+]) makeActionButton(action.name, action.doWhat);
 
 canvas.addEventListener('mousedown', ev => {
     if (ev.button == LEFT_CLICK) {
