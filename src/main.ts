@@ -114,7 +114,7 @@ function drawingGetUndoStep(): DrawCommand | null {
 
 function drawingSetTool(which: string): void {
     drawingTool = which;
-    cursorDrawCommand = drawingTools[drawingTool].makeCursorDrawCommand();
+    drawingShowCursor();
 }
 
 function drawingUpdate(
