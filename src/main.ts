@@ -113,10 +113,20 @@ makeElement(app, 'h1', {}, elem => elem.innerHTML = APP_NAME);
 const canvas = makeElement(app, 'canvas', {
     id: 'user-drawing-area', ...SKETCHPAD_RESOLUTION
 });
+const canvasContext = getContext2D(canvas);
 const toolButtonsDiv = makeElement(app, 'div', {id: 'tool-buttons'});
 const actionButtonsDiv = makeElement(app, 'div', {id: 'action-buttons'});
-
-const canvasContext = getContext2D(canvas);
+const colorPicker = makeElement(toolButtonsDiv, 'input', {
+    id: 'color-picker', type: 'color'
+});
+makeElement(toolButtonsDiv, 'br');
+makeElement(toolButtonsDiv, 'label', {
+    htmlFor: 'sticker-rotation-slider', innerHTML: "Sticker rotation"
+});
+const stickerRotationSlider = makeElement(toolButtonsDiv, 'input', {
+    id: 'sticker-rotation-slider', type: 'range', min: '0', max: '360'
+});
+makeElement(toolButtonsDiv, 'br');
 
 // Tool-agnostic canvas operations
 
@@ -200,9 +210,11 @@ function drawingExport(where: CanvasMaybeOffscreen): void {
     const cursorWasShown = cursorDrawCommand !== null;
     drawingHideCursor();
     const ctx = getContext2D(where);
+    ctx.save();
     ctx.scale(where.width/canvas.width, where.height/canvas.height);
     drawingUpdate(where, ctx);
     if (cursorWasShown) drawingShowCursor();
+    ctx.restore();
 }
 
 async function drawingExportToDownload(): Promise<void> {
@@ -219,6 +231,7 @@ async function drawingExportToDownload(): Promise<void> {
 // Tool implementations
 
 function makeMarkerDrawCommand(options: MarkerOptions) {return {
+    color: colorPicker.value,
     points: [] as Point[],
     get posn(): Point {
         if (this.points.length > 0) return this.points[this.points.length - 1];
@@ -226,6 +239,7 @@ function makeMarkerDrawCommand(options: MarkerOptions) {return {
     },
     move(posn: Point) {this.points.push(posn);},
     draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
+        ctx.strokeStyle = this.color;
         ctx.lineWidth = options.lineWidth;
         forEachAdjacentPair(this.points, (p1, p2) => drawLine(ctx, p1, p2));
     }
@@ -235,18 +249,24 @@ function makeCircleCursorDrawCommand(options: CircleOptions) {return {
     posn: {x: NaN, y: NaN},
     move(posn: Point) {this.posn = posn;},
     draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
+        ctx.strokeStyle = colorPicker.value;
         ctx.lineWidth = 1;
         drawCircle(ctx, this.posn, options.radius);
     }
 };}
 
 function makeStickerDrawCommand(options: StickerOptions) {return {
+    rotation: Number(stickerRotationSlider.value),
     posn: {...(cursorDrawCommand?.posn || {x: NaN, y: NaN})},
     move(posn: Point) {this.posn = posn;},
     draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
+        ctx.save();
+        ctx.translate(this.posn.x, this.posn.y);
+        ctx.rotate(this.rotation*Math.PI/180);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(options.text, this.posn.x, this.posn.y);
+        ctx.fillText(options.text, 0, 0);
+        ctx.restore();
     }
 };}
 
@@ -268,7 +288,7 @@ function makeStickerDrawingTool(options: StickerOptions): DrawingTool {return {
     }
 };}
 
-// UI input handling
+// Tool buttons and action buttons
 
 function makeToolButton(toolName: string): HTMLButtonElement {
     return makeElement(toolButtonsDiv, 'button', {
