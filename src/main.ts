@@ -24,6 +24,18 @@ interface DrawingTool {
     makeCursorDrawCommand(): DrawCommand;
 }
 
+interface MarkerOptions {
+    lineWidth: number;
+}
+
+interface StickerOptions {
+    text: string;
+}
+
+interface CircleOptions {
+    radius: number;
+}
+
 // Dynamic globals
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -157,9 +169,7 @@ function drawCircle(
 
 // Tool implementations
 
-function makeMarkerDrawCommand(options: {
-    lineWidth: number
-}) {return {
+function makeMarkerDrawCommand(options: MarkerOptions) {return {
     points: [] as Point[],
     get posn(): Point {
         if (this.points.length > 0) return this.points[this.points.length - 1];
@@ -172,9 +182,7 @@ function makeMarkerDrawCommand(options: {
     }
 };}
 
-function makeCircleCursorDrawCommand(options: {
-    radius: number
-}) {return {
+function makeCircleCursorDrawCommand(options: CircleOptions) {return {
     posn: {x: 0, y: 0},
     move(posn: Point) {this.posn = posn;},
     draw(ctx: CanvasRenderingContext2D) {
@@ -183,9 +191,7 @@ function makeCircleCursorDrawCommand(options: {
     }
 };}
 
-function makeStickerDrawCommand(options: {
-    text: string
-}) {return {
+function makeStickerDrawCommand(options: StickerOptions) {return {
     posn: {...(cursorDrawCommand?.posn || {x: 0, y: 0})},
     move(posn: Point) {this.posn = posn;},
     draw(ctx: CanvasRenderingContext2D) {
@@ -195,22 +201,18 @@ function makeStickerDrawCommand(options: {
     }
 };}
 
-function makeMarkerDrawingTool(options: {
-    lineWidth: number
-}): DrawingTool {return {
+function makeMarkerDrawingTool(options: MarkerOptions): DrawingTool {return {
     makeDrawCommand(): DrawCommand {
-        return makeMarkerDrawCommand({lineWidth: options.lineWidth});
+        return makeMarkerDrawCommand(options);
     },
     makeCursorDrawCommand(): DrawCommand {
         return makeCircleCursorDrawCommand({radius: options.lineWidth/2});
     }
 };}
 
-function makeStickerDrawingTool(options: {
-    text: string
-}): DrawingTool {return {
+function makeStickerDrawingTool(options: StickerOptions): DrawingTool {return {
     makeDrawCommand(): DrawCommand {
-        return makeStickerDrawCommand({text: options.text});
+        return makeStickerDrawCommand(options);
     },
     makeCursorDrawCommand(): DrawCommand {
         return this.makeDrawCommand();
