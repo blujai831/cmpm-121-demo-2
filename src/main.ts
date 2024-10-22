@@ -8,7 +8,10 @@ const LEFT_CLICK_FLAG = 1 as const;
 const RELIEVED_EMOJI = "\u{1F60C}" as const;
 const EXPRESSIONLESS_EMOJI = "\u{1F611}" as const;
 const PENSIVE_EMOJI = "\u{1F614}" as const;
+const SKETCHPAD_RESOLUTION = {width: 256, height: 256} as const;
 const EXPORT_DOWNLOAD_RESOLUTION = {width: 1024, height: 1024} as const;
+const EXPORT_DOWNLOAD_FILENAME = "sketch.png";
+const STICKER_TEXT_STYLE = "48px sans-serif" as const;
 
 // Interfaces
 
@@ -108,7 +111,7 @@ document.title = APP_NAME;
 
 makeElement(app, 'h1', {}, elem => elem.innerHTML = APP_NAME);
 const canvas = makeElement(app, 'canvas', {
-    id: 'user-drawing-area', width: 256, height: 256
+    id: 'user-drawing-area', ...SKETCHPAD_RESOLUTION
 });
 const toolButtonsDiv = makeElement(app, 'div', {id: 'tool-buttons'});
 const actionButtonsDiv = makeElement(app, 'div', {id: 'action-buttons'});
@@ -210,7 +213,7 @@ async function drawingExportToDownload(): Promise<void> {
     drawingExport(target);
     const pngData = await target.convertToBlob();
     const url = URL.createObjectURL(pngData);
-    download(url, "sketch.png");
+    download(url, EXPORT_DOWNLOAD_FILENAME);
 }
 
 // Tool implementations
@@ -366,4 +369,4 @@ canvas.addEventListener('tool-moved', _ =>
 drawingSetTool("Thin Marker");
 toolButtonsDiv.dispatchEvent(new Event('tool-changed'));
 canvasContext.strokeStyle = 'black';
-canvasContext.font = "48px sans-serif";
+canvasContext.font = STICKER_TEXT_STYLE;
