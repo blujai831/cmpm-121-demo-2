@@ -11,7 +11,7 @@ const PENSIVE_EMOJI = "\u{1F614}" as const;
 const SKETCHPAD_RESOLUTION = {width: 256, height: 256} as const;
 const EXPORT_DOWNLOAD_RESOLUTION = {width: 1024, height: 1024} as const;
 const EXPORT_DOWNLOAD_FILENAME = "sketch.png" as const;
-const STICKER_TEXT_STYLE = "48px sans-serif" as const;
+const STICKER_TEXT_STYLE = "192px sans-serif";
 
 // Interfaces
 
@@ -265,6 +265,7 @@ function makeStickerDrawCommand(options: StickerOptions) {return {
         ctx.save();
         ctx.translate(this.posn.x, this.posn.y);
         ctx.rotate(this.rotation*Math.PI/180);
+        ctx.scale(0.25, 0.25);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.font = STICKER_TEXT_STYLE;
