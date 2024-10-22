@@ -11,7 +11,7 @@ const PENSIVE_EMOJI = "\u{1F614}" as const;
 const SKETCHPAD_RESOLUTION = {width: 256, height: 256} as const;
 const EXPORT_DOWNLOAD_RESOLUTION = {width: 1024, height: 1024} as const;
 const EXPORT_DOWNLOAD_FILENAME = "sketch.png" as const;
-const STICKER_TEXT_STYLE = "192px sans-serif";
+const STICKER_TEXT_STYLE = "192px sans-serif" as const;
 
 // Interfaces
 
