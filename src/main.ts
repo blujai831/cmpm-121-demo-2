@@ -5,9 +5,9 @@ import "./style.css";
 const APP_NAME = "Sticker Sketchpad" as const;
 const LEFT_CLICK = 0 as const;
 const LEFT_CLICK_FLAG = 1 as const;
-const RELIEVED_EMOJI = "\u{1F60C}";
-const EXPRESSIONLESS_EMOJI = "\u{1F611}";
-const PENSIVE_EMOJI = "\u{1F614}";
+const RELIEVED_EMOJI = "\u{1F60C}" as const;
+const EXPRESSIONLESS_EMOJI = "\u{1F611}" as const;
+const PENSIVE_EMOJI = "\u{1F614}" as const;
 
 // Interfaces
 
