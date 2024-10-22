@@ -2,16 +2,16 @@ import "./style.css";
 
 // Readonly constants
 
-const APP_NAME = "Sticker Sketchpad" as const;
-const LEFT_CLICK = 0 as const;
-const LEFT_CLICK_FLAG = 1 as const;
-const RELIEVED_EMOJI = "\u{1F60C}" as const;
-const EXPRESSIONLESS_EMOJI = "\u{1F611}" as const;
-const PENSIVE_EMOJI = "\u{1F614}" as const;
+const APP_NAME = "Sticker Sketchpad";
+const LEFT_CLICK = 0;
+const LEFT_CLICK_FLAG = 1;
+const RELIEVED_EMOJI = "\u{1F60C}";
+const EXPRESSIONLESS_EMOJI = "\u{1F611}";
+const PENSIVE_EMOJI = "\u{1F614}";
 const SKETCHPAD_RESOLUTION = {width: 256, height: 256} as const;
 const EXPORT_DOWNLOAD_RESOLUTION = {width: 1024, height: 1024} as const;
-const EXPORT_DOWNLOAD_FILENAME = "sketch.png" as const;
-const STICKER_TEXT_STYLE = "192px sans-serif" as const;
+const EXPORT_DOWNLOAD_FILENAME = "sketch.png";
+const STICKER_TEXT_STYLE = "192px sans-serif";
 
 // Interfaces
 
