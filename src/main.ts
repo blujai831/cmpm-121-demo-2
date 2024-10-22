@@ -260,11 +260,14 @@ function makeStickerDrawCommand(options: StickerOptions) {return {
     posn: {...(cursorDrawCommand?.posn || {x: NaN, y: NaN})},
     move(posn: Point) {this.posn = posn;},
     draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
+        if (ctx instanceof OffscreenCanvasRenderingContext2D)
+            console.log(`draw sticker: ${options.text}, ${this.posn.x} ${this.posn.y}`)
         ctx.save();
         ctx.translate(this.posn.x, this.posn.y);
         ctx.rotate(this.rotation*Math.PI/180);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        ctx.font = STICKER_TEXT_STYLE;
         ctx.fillText(options.text, 0, 0);
         ctx.restore();
     }
@@ -388,5 +391,3 @@ canvas.addEventListener('tool-moved', _ =>
 
 drawingSetTool("Thin Marker");
 toolButtonsDiv.dispatchEvent(new Event('tool-changed'));
-canvasContext.strokeStyle = 'black';
-canvasContext.font = STICKER_TEXT_STYLE;
