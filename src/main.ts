@@ -272,7 +272,7 @@ function makeStickerDrawCommand(options: StickerOptions) {return {
 
 function makeMarkerDrawingTool(options: MarkerOptions): DrawingTool {return {
     makeDrawCommand(): DrawCommand {
-        return makeMarkerDrawCommand(options);
+        return makeMarkerDrawCommand({...options});
     },
     makeCursorDrawCommand(): DrawCommand {
         return makeCircleCursorDrawCommand({radius: options.lineWidth/2});
@@ -281,7 +281,7 @@ function makeMarkerDrawingTool(options: MarkerOptions): DrawingTool {return {
 
 function makeStickerDrawingTool(options: StickerOptions): DrawingTool {return {
     makeDrawCommand(): DrawCommand {
-        return makeStickerDrawCommand(options);
+        return makeStickerDrawCommand({...options});
     },
     makeCursorDrawCommand(): DrawCommand {
         return this.makeDrawCommand();
