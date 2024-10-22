@@ -56,7 +56,8 @@ const drawingTools: Record<string, DrawingTool> = {
     "Thin Marker": makeMarkerDrawingTool({lineWidth: 2}),
     "Thick Marker": makeMarkerDrawingTool({lineWidth: 6}),
     [RELIEVED_EMOJI]: makeStickerDrawingTool({text: RELIEVED_EMOJI}),
-    [EXPRESSIONLESS_EMOJI]: makeStickerDrawingTool({text: EXPRESSIONLESS_EMOJI}),
+    [EXPRESSIONLESS_EMOJI]:
+        makeStickerDrawingTool({text: EXPRESSIONLESS_EMOJI}),
     [PENSIVE_EMOJI]: makeStickerDrawingTool({text: PENSIVE_EMOJI})
 };
 
