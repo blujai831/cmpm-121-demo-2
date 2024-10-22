@@ -100,6 +100,13 @@ canvas#user-drawing-area {
 #tool-buttons button:disabled {
   border-color: gray;
 }
+#action-buttons {
+  margin-top: 0.75em;
+  max-width: 320px;
+}
+#action-buttons button {
+  margin: 0.25em;
+}
 
 @media (prefers-color-scheme: light) {
   :root {
