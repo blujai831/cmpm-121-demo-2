@@ -195,7 +195,9 @@ function makeStickerDrawCommand(options: {
     }
 };}
 
-function makeMarkerDrawingTool(options: {lineWidth: number}): DrawingTool {return {
+function makeMarkerDrawingTool(options: {
+    lineWidth: number
+}): DrawingTool {return {
     makeDrawCommand(): DrawCommand {
         return makeMarkerDrawCommand({lineWidth: options.lineWidth});
     },
@@ -204,7 +206,9 @@ function makeMarkerDrawingTool(options: {lineWidth: number}): DrawingTool {retur
     }
 };}
 
-function makeStickerDrawingTool(options: {text: string}): DrawingTool {return {
+function makeStickerDrawingTool(options: {
+    text: string
+}): DrawingTool {return {
     makeDrawCommand(): DrawCommand {
         return makeStickerDrawCommand({text: options.text});
     },
