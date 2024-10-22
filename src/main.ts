@@ -124,7 +124,8 @@ makeElement(toolButtonsDiv, 'label', {
     htmlFor: 'sticker-rotation-slider', innerHTML: "Sticker rotation"
 });
 const stickerRotationSlider = makeElement(toolButtonsDiv, 'input', {
-    id: 'sticker-rotation-slider', type: 'range', min: '0', max: '360'
+    id: 'sticker-rotation-slider', type: 'range',
+    min: '0', max: '360', value: '0'
 });
 makeElement(toolButtonsDiv, 'br');
 
