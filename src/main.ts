@@ -260,8 +260,6 @@ function makeStickerDrawCommand(options: StickerOptions) {return {
     posn: {...(cursorDrawCommand?.posn || {x: NaN, y: NaN})},
     move(posn: Point) {this.posn = posn;},
     draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
-        if (ctx instanceof OffscreenCanvasRenderingContext2D)
-            console.log(`draw sticker: ${options.text}, ${this.posn.x} ${this.posn.y}`)
         ctx.save();
         ctx.translate(this.posn.x, this.posn.y);
         ctx.rotate(this.rotation*Math.PI/180);
