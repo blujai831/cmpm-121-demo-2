@@ -1,15 +1,19 @@
 import "./style.css";
 
-// Readonly constants
-
+// Constants
+// app
 const APP_NAME = "Sticker Sketchpad";
 const LEFT_CLICK = 0;
 const LEFT_CLICK_FLAG = 1;
+const SKETCHPAD_RESOLUTION = {width: 256, height: 256} as const;
+const EXPORT_DOWNLOAD_RESOLUTION = {width: 1024, height: 1024} as const;
+
+// emojis
 const RELIEVED_EMOJI = "\u{1F60C}";
 const EXPRESSIONLESS_EMOJI = "\u{1F611}";
 const PENSIVE_EMOJI = "\u{1F614}";
-const SKETCHPAD_RESOLUTION = {width: 256, height: 256} as const;
-const EXPORT_DOWNLOAD_RESOLUTION = {width: 1024, height: 1024} as const;
+
+// export
 const EXPORT_DOWNLOAD_FILENAME = "sketch.png";
 const STICKER_TEXT_STYLE = "192px sans-serif";
 
@@ -21,7 +25,10 @@ type CanvasRenderingContext2DMaybeOffscreen =
     CanvasRenderingContext2D |
     OffscreenCanvasRenderingContext2D;
 
-interface Point {x: number, y: number}
+interface Point {
+    x: number;
+    y: number;
+}
 
 interface DrawCommand {
     get posn(): Point;
@@ -48,19 +55,22 @@ interface CircleOptions {
 
 // Dynamic globals
 
+// Main HTML element references
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const displayList: DrawCommand[] = [];
-const undoStack = displayList;
-const redoStack: DrawCommand[] = [];
 let drawingTool: string;
 let cursorDrawCommand: DrawCommand | null;
 
+// Storage for undo and redo actions
+const undoStack = displayList;
+const redoStack: DrawCommand[] = [];
+
+// Drawing tools registration
 const drawingTools: Record<string, DrawingTool> = {
     "Thin Marker": makeMarkerDrawingTool({lineWidth: 2}),
     "Thick Marker": makeMarkerDrawingTool({lineWidth: 6}),
     [RELIEVED_EMOJI]: makeStickerDrawingTool({text: RELIEVED_EMOJI}),
-    [EXPRESSIONLESS_EMOJI]:
-        makeStickerDrawingTool({text: EXPRESSIONLESS_EMOJI}),
+    [EXPRESSIONLESS_EMOJI]: makeStickerDrawingTool({text: EXPRESSIONLESS_EMOJI}),
     [PENSIVE_EMOJI]: makeStickerDrawingTool({text: PENSIVE_EMOJI})
 };
 
@@ -102,18 +112,23 @@ function download(url: string, fname: string): void {
     link.download = fname;
     app.appendChild(link);
     link.click();
-    document.removeChild(link);
+    app.removeChild(link);  
 }
 
-// UI general layout
+// Layout Setup
 
 document.title = APP_NAME;
 
+// Main UI components creation
 makeElement(app, 'h1', {}, elem => elem.innerHTML = APP_NAME);
+
+// Canvas setup
 const canvas = makeElement(app, 'canvas', {
     id: 'user-drawing-area', ...SKETCHPAD_RESOLUTION
 });
 const canvasContext = getContext2D(canvas);
+
+// Toolbar setup
 const toolButtonsDiv = makeElement(app, 'div', {id: 'tool-buttons'});
 const actionButtonsDiv = makeElement(app, 'div', {id: 'action-buttons'});
 const colorPicker = makeElement(toolButtonsDiv, 'input', {
@@ -129,32 +144,37 @@ const stickerRotationSlider = makeElement(toolButtonsDiv, 'input', {
 });
 makeElement(toolButtonsDiv, 'br');
 
-// Tool-agnostic canvas operations
+// Canvas Operations
 
 function drawingUndo(): boolean {
     if (undoStack.length > 0) {
         redoStack.push(undoStack.pop()!);
         return true;
-    } else return false;
+    }
+    return false;
 }
 
 function drawingRedo(): boolean {
     if (redoStack.length > 0) {
-        undoStack.push(redoStack.pop()!)
+        undoStack.push(redoStack.pop()!);
         return true;
-    } else return false;
+    }
+    return false;
 }
 
+/** Clear all drawing commands. */
 function drawingClear(): void {
     redoStack.length = 0;
     displayList.length = 0;
 }
 
+/** Begin an undo step by caching the current drawing command. */
 function drawingBeginUndoStep(): void {
     redoStack.length = 0;
     undoStack.push(drawingTools[drawingTool].makeDrawCommand());
 }
 
+/** Retrieve the current undo step. */
 function drawingGetUndoStep(): DrawCommand | null {
     if (undoStack.length > 0) return undoStack[undoStack.length - 1];
     else return null;
@@ -165,6 +185,7 @@ function drawingSetTool(which: string): void {
     drawingShowCursor();
 }
 
+/** Update the canvas with current drawing commands. */
 function drawingUpdate(
     canvas: CanvasMaybeOffscreen,
     ctx: CanvasRenderingContext2DMaybeOffscreen
@@ -204,7 +225,7 @@ function drawCircle(
     posn: Point, radius: number
 ): void {
     drawPath(ctx, ctx =>
-        ctx.ellipse(posn.x, posn.y, radius, radius, 0, 0, 2*Math.PI));
+        ctx.ellipse(posn.x, posn.y, radius, radius, 0, 0, 2 * Math.PI));
 }
 
 function drawingExport(where: CanvasMaybeOffscreen): void {
@@ -212,7 +233,7 @@ function drawingExport(where: CanvasMaybeOffscreen): void {
     drawingHideCursor();
     const ctx = getContext2D(where);
     ctx.save();
-    ctx.scale(where.width/canvas.width, where.height/canvas.height);
+    ctx.scale(where.width / canvas.width, where.height / canvas.height);
     drawingUpdate(where, ctx);
     if (cursorWasShown) drawingShowCursor();
     ctx.restore();
@@ -229,88 +250,96 @@ async function drawingExportToDownload(): Promise<void> {
     download(url, EXPORT_DOWNLOAD_FILENAME);
 }
 
-// Tool implementations
+// Tool Implementations
 
-function makeMarkerDrawCommand(options: MarkerOptions) {return {
-    color: colorPicker.value,
-    points: [] as Point[],
-    get posn(): Point {
-        if (this.points.length > 0) return this.points[this.points.length - 1];
-        else return {x: NaN, y: NaN};
-    },
-    move(posn: Point) {this.points.push(posn);},
-    draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = options.lineWidth;
-        forEachAdjacentPair(this.points, (p1, p2) => drawLine(ctx, p1, p2));
-    }
-};}
+function makeMarkerDrawCommand(options: MarkerOptions) {
+    return {
+        color: colorPicker.value,
+        points: [] as Point[],
+        get posn(): Point {
+            if (this.points.length > 0) return this.points[this.points.length - 1];
+            else return {x: NaN, y: NaN};
+        },
+        move(posn: Point) {this.points.push(posn);},
+        draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = options.lineWidth;
+            forEachAdjacentPair(this.points, (p1, p2) => drawLine(ctx, p1, p2));
+        }
+    };
+}
 
-function makeCircleCursorDrawCommand(options: CircleOptions) {return {
-    posn: {x: NaN, y: NaN},
-    move(posn: Point) {this.posn = posn;},
-    draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
-        ctx.strokeStyle = colorPicker.value;
-        ctx.lineWidth = 1;
-        drawCircle(ctx, this.posn, options.radius);
-    }
-};}
+function makeCircleCursorDrawCommand(options: CircleOptions) {
+    return {
+        posn: {x: NaN, y: NaN},
+        move(posn: Point) {this.posn = posn;},
+        draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
+            ctx.strokeStyle = colorPicker.value;
+            ctx.lineWidth = 1;
+            drawCircle(ctx, this.posn, options.radius);
+        }
+    };
+}
 
-function makeStickerDrawCommand(options: StickerOptions) {return {
-    rotation: Number(stickerRotationSlider.value),
-    posn: {...(cursorDrawCommand?.posn || {x: NaN, y: NaN})},
-    move(posn: Point) {this.posn = posn;},
-    draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
-        ctx.save();
-        ctx.translate(this.posn.x, this.posn.y);
-        ctx.rotate(this.rotation*Math.PI/180);
-        ctx.scale(0.25, 0.25);
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = STICKER_TEXT_STYLE;
-        ctx.fillText(options.text, 0, 0);
-        ctx.restore();
-    }
-};}
+function makeStickerDrawCommand(options: StickerOptions) {
+    return {
+        rotation: Number(stickerRotationSlider.value),
+        posn: {...(cursorDrawCommand?.posn || {x: NaN, y: NaN})},
+        move(posn: Point) {this.posn = posn;},
+        draw(ctx: CanvasRenderingContext2DMaybeOffscreen) {
+            ctx.save();
+            ctx.translate(this.posn.x, this.posn.y);
+            ctx.rotate(this.rotation * Math.PI / 180);
+            ctx.scale(0.25, 0.25);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = STICKER_TEXT_STYLE;
+            ctx.fillText(options.text, 0, 0);
+            ctx.restore();
+        }
+    };
+}
 
-function makeMarkerDrawingTool(options: MarkerOptions): DrawingTool {return {
-    makeDrawCommand(): DrawCommand {
-        return makeMarkerDrawCommand({...options});
-    },
-    makeCursorDrawCommand(): DrawCommand {
-        return makeCircleCursorDrawCommand({radius: options.lineWidth/2});
-    }
-};}
+function makeMarkerDrawingTool(options: MarkerOptions): DrawingTool {
+    return {
+        makeDrawCommand(): DrawCommand {
+            return makeMarkerDrawCommand({...options});
+        },
+        makeCursorDrawCommand(): DrawCommand {
+            return makeCircleCursorDrawCommand({radius: options.lineWidth / 2});
+        }
+    };
+}
 
-function makeStickerDrawingTool(options: StickerOptions): DrawingTool {return {
-    makeDrawCommand(): DrawCommand {
-        return makeStickerDrawCommand({...options});
-    },
-    makeCursorDrawCommand(): DrawCommand {
-        return this.makeDrawCommand();
-    }
-};}
+function makeStickerDrawingTool(options: StickerOptions): DrawingTool {
+    return {
+        makeDrawCommand(): DrawCommand {
+            return makeStickerDrawCommand({...options});
+        },
+        makeCursorDrawCommand(): DrawCommand {
+            return this.makeDrawCommand();
+        }
+    };
+}
 
-// Tool buttons and action buttons
+// Tool and Action Button Initialization
 
 function makeToolButton(toolName: string): HTMLButtonElement {
     return makeElement(toolButtonsDiv, 'button', {
         innerHTML: toolName,
         onclick: _ => {
-            if (drawingTool != toolName) {
+            if (drawingTool !== toolName) {
                 drawingSetTool(toolName);
                 toolButtonsDiv.dispatchEvent(new Event('tool-changed'));
                 canvas.dispatchEvent(new Event('tool-moved'));
             }
         }
     }, elem => toolButtonsDiv.addEventListener('tool-changed', _ => {
-        elem.disabled = (drawingTool == toolName);
+        elem.disabled = (drawingTool === toolName);
     }, true));
 }
 
-function makeActionButton(
-    name: string, doWhat: () => void
-): HTMLButtonElement {
+function makeActionButton(name: string, doWhat: () => void): HTMLButtonElement {
     return makeElement(actionButtonsDiv, 'button', {
         innerHTML: name,
         onclick: _ => {
@@ -320,6 +349,7 @@ function makeActionButton(
     });
 }
 
+// Handler function for custom sticker creation
 function defineCustomSticker(options: {text: string}): DrawingTool {
     if (options.text in drawingTools) {
         return drawingTools[options.text];
@@ -341,6 +371,7 @@ function tryDefineCustomStickerFromPrompt(): DrawingTool | null {
     }
 }
 
+// Initialize tool and action buttons
 for (const toolName of Object.keys(drawingTools)) makeToolButton(toolName);
 
 for (const action of [
@@ -351,8 +382,10 @@ for (const action of [
     {name: "Export...", doWhat: drawingExportToDownload}
 ]) makeActionButton(action.name, action.doWhat);
 
+// Register Event Listeners
+
 canvas.addEventListener('mousedown', ev => {
-    if (ev.button == LEFT_CLICK) {
+    if (ev.button === LEFT_CLICK) {
         drawingBeginUndoStep();
         canvas.dispatchEvent(new Event('drawing-changed'));
         drawingHideCursor();
@@ -366,7 +399,7 @@ canvas.addEventListener('mousemove', ev => {
         y: ev.clientY - canvas.offsetTop
     };
     if (
-        (ev.buttons & LEFT_CLICK_FLAG) == LEFT_CLICK_FLAG &&
+        (ev.buttons & LEFT_CLICK_FLAG) === LEFT_CLICK_FLAG &&
         displayList.length > 0
     ) {
         drawingHideCursor();
@@ -387,7 +420,7 @@ canvas.addEventListener('drawing-changed', _ =>
 canvas.addEventListener('tool-moved', _ =>
     drawingUpdate(canvas, canvasContext));
 
-// Runtime initialization
+// Runtime Initialization
 
 drawingSetTool("Thin Marker");
 toolButtonsDiv.dispatchEvent(new Event('tool-changed'));
